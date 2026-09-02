@@ -12,6 +12,11 @@ name: MCP Check
 #
 # No secrets: both `tools/list` and the 401 challenge on `tools/call` are
 # reachable unauthenticated.
+#
+# Everything here reads the manifest from disk. On a fork pull request that
+# manifest is attacker-controlled, so its contents must never reach shell
+# source: no `${{ }}` interpolation inside a `run:` block, and no step outputs
+# carrying manifest values.
 
 on:
   push:
@@ -38,32 +43,28 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Resolve the declared server config
-        id: config
         run: |
           set -euo pipefail
           config=plugins/greptile/.mcp.json
           # Both shapes are accepted by Claude Code: a bare server map, and one
           # wrapped in `mcpServers`. Normalise before asserting anything, so a
           # later move to the wrapped form cannot silently skip these checks.
-          servers=$(jq -c 'if has("mcpServers") then .mcpServers else . end' "$config")
-          if ! jq -e '.greptile | type == "object"' >/dev/null <<<"$servers"; then
+          jq -e 'if has("mcpServers") then .mcpServers else . end' "$config" > "$RUNNER_TEMP/servers.json"
+          if ! jq -e '.greptile | type == "object"' "$RUNNER_TEMP/servers.json" >/dev/null; then
             echo "::error::$config does not declare a \"greptile\" server object in either the bare or mcpServers shape."
             exit 1
           fi
-          url=$(jq -r '.greptile.url' <<<"$servers")
-          if [ -z "$url" ] || [ "$url" = "null" ]; then
-            echo "::error::$config declares no url for the greptile server."
+          if ! jq -e '.greptile.url | type == "string" and startswith("https://")' "$RUNNER_TEMP/servers.json" >/dev/null; then
+            echo "::error::$config does not declare an https url for the greptile server."
             exit 1
           fi
-          echo "servers=$servers" >> "$GITHUB_OUTPUT"
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-          echo "Resolved $url"
+          jq -r '.greptile.url' "$RUNNER_TEMP/servers.json" > "$RUNNER_TEMP/url.txt"
+          echo "Resolved $(cat "$RUNNER_TEMP/url.txt")"
 
       - name: Config declares no Authorization header
         run: |
           set -euo pipefail
-          servers='${{ steps.config.outputs.servers }}'
-          if jq -e '.greptile | has("headers")' >/dev/null <<<"$servers"; then
+          if jq -e '.greptile | has("headers")' "$RUNNER_TEMP/servers.json" >/dev/null; then
             echo "::error::plugins/greptile/.mcp.json declares headers. An Authorization header disables Claude Code's OAuth fallback; the server authenticates over OAuth and needs none."
             exit 1
           fi
@@ -72,7 +73,7 @@ jobs:
       - name: Server still advertises OAuth
         run: |
           set -euo pipefail
-          url='${{ steps.config.outputs.url }}'
+          url=$(cat "$RUNNER_TEMP/url.txt")
           response=$(curl -sS -o /dev/null -D - -X POST "$url" \
             -H 'Content-Type: application/json' \
             -H 'Accept: application/json, text/event-stream' \
@@ -92,15 +93,15 @@ jobs:
       - name: README documents exactly the tools the server serves
         run: |
           set -euo pipefail
-          url='${{ steps.config.outputs.url }}'
+          url=$(cat "$RUNNER_TEMP/url.txt")
           curl -sS -X POST "$url" \
             -H 'Content-Type: application/json' \
             -H 'Accept: application/json, text/event-stream' \
-            -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' > /tmp/tools.json
+            -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' > "$RUNNER_TEMP/tools.json"
           python3 - <<'PY'
-          import json, re, sys
+          import json, os, re, sys
 
-          with open('/tmp/tools.json') as fh:
+          with open(os.path.join(os.environ['RUNNER_TEMP'], 'tools.json')) as fh:
               payload = json.load(fh)
           if 'result' not in payload:
               sys.exit(f"::error::tools/list returned no result: {json.dumps(payload)[:400]}")
