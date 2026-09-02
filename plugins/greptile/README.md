@@ -13,7 +13,7 @@ Nothing to install and no API key to create.
 
 **MCP server.** Open the `/mcp` menu and authenticate **greptile**. Your browser opens [auth.greptile.com](https://auth.greptile.com); sign in and approve access. Claude Code stores and refreshes the tokens.
 
-**CLI.** Run `/greptile:login` once. This fetches the CLI with `npx` and signs it in through the same OAuth provider. Requires Node 22 or newer.
+**CLI.** Run `/greptile:login` once and sign in through the same OAuth provider. The CLI ships with this plugin — there is nothing to fetch and no npm or Homebrew install — but it is a Node program, so Node must be on your machine.
 
 The two sign-ins are separate: same Greptile account, same OAuth provider, but the CLI keeps its own credentials in `~/.greptile/auth.json` while Claude Code keeps the MCP tokens in its own store. Use whichever surface you need; you only have to sign in to that one.
 
@@ -53,6 +53,19 @@ The two sign-ins are separate: same Greptile account, same OAuth provider, but t
 - "Show me Greptile's comments on my current PR and help me resolve them"
 - "What issues did Greptile find on PR #123?"
 - "Search our knowledge base for how authentication works in this repo"
+
+## Bundled CLI
+
+`scripts/greptile.mjs` is the Greptile CLI, vendored from the published npm package
+`greptile` (its `dist/greptile.js`, renamed only so Node reads it as ESM without a
+sibling `package.json`). `scripts/greptile.version` records which release it is, and
+CI verifies the file byte-for-byte against that version's npm tarball, so the copy
+running here is the same one npm serves.
+
+Because the CLI ships with the plugin, it updates with the plugin — not through
+`greptile update`, `npm`, or `brew`. Any separate `greptile` you have installed is
+untouched and unused by these commands, though both share your login at
+`~/.greptile/auth.json`.
 
 ## Documentation
 

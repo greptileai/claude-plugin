@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash(npx:*)
+allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/greptile.mjs:*)
 argument-hint: ""
 description: Sign the Greptile CLI in to your Greptile account
 ---
@@ -10,7 +10,7 @@ Tell the user a browser window will open and that they need to finish signing
 in there, then run:
 
 ```
-npx -y greptile@latest login
+GREPTILE_NO_UPDATE_CHECK=1 node "${CLAUDE_PLUGIN_ROOT}/scripts/greptile.mjs" login
 ```
 
 Give the Bash call a **600000 ms timeout**. The CLI waits up to ten minutes for
