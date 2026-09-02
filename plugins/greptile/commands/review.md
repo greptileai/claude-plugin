@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash(npx:*), mcp__plugin_greptile_greptile__get_code_review, mcp__plugin_greptile_greptile__list_code_reviews
+allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/greptile.mjs:*), mcp__plugin_greptile_greptile__get_code_review, mcp__plugin_greptile_greptile__list_code_reviews
 argument-hint: [base branch] [what to focus on]
 description: Review the current branch with Greptile
 ---
@@ -17,13 +17,18 @@ Build the command from `$ARGUMENTS`, if the user supplied any:
   instructions and `$(...)` would stop the run at a permission prompt.
 
 ```
-npx -y greptile@latest review --agent
+GREPTILE_NO_UPDATE_CHECK=1 node "${CLAUDE_PLUGIN_ROOT}/scripts/greptile.mjs" review --agent
 ```
 
 Always pass `--agent`; it selects plain output intended for AI agents.
 
+`GREPTILE_NO_UPDATE_CHECK=1` is required, not cosmetic. The CLI infers how it was
+installed from its own path; a copy running from inside this plugin looks like a
+standalone install, so the notifier would tell the user to re-run an installer
+that cannot update the plugin's copy. Updates arrive with the plugin instead.
+
 Give the Bash call a **600000 ms timeout**. A review commonly runs longer than
-the two-minute default, and the first invocation also has to fetch the CLI.
+the two-minute default.
 
 If the run reports that no one is signed in, it prints `not signed in. Set
 GREPTILE_API_KEY or run 'greptile login --api-key'`. Prefer OAuth over an API

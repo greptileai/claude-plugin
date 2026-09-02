@@ -1,0 +1,92 @@
+name: CLI Check
+
+# The plugin vendors the Greptile CLI at plugins/greptile/scripts/greptile.mjs.
+# Vendoring is a manual step, so the two things that can silently go wrong are
+# shipping a bundle that is not the release it claims to be, and shipping one
+# that is not what npm publishes at all. Both are checked by running the file
+# and by comparing it byte-for-byte against the published tarball.
+#
+# A local rebuild of the CLI is NOT byte-identical to the npm artifact for the
+# same version, so the vendored file must always be extracted from `npm pack`,
+# never from a local `bun scripts/bundle.ts`.
+#
+# No secrets. As in mcp-check.yml, repo-controlled values are read from disk
+# and never interpolated into shell source with `${{ }}` — a fork pull request
+# controls these files.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'plugins/greptile/scripts/**'
+      - '.github/workflows/cli-check.yml'
+  pull_request:
+    paths:
+      - 'plugins/greptile/scripts/**'
+      - '.github/workflows/cli-check.yml'
+  schedule:
+    - cron: '41 8 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Recorded version is well formed
+        run: |
+          set -euo pipefail
+          version=$(tr -d '[:space:]' < plugins/greptile/scripts/greptile.version)
+          if ! printf '%s' "$version" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::plugins/greptile/scripts/greptile.version is not a plain semver string."
+            exit 1
+          fi
+          printf '%s' "$version" > "$RUNNER_TEMP/version.txt"
+          echo "Recorded version $version"
+
+      - name: Bundle runs and reports the recorded version
+        run: |
+          set -euo pipefail
+          version=$(cat "$RUNNER_TEMP/version.txt")
+          reported=$(node plugins/greptile/scripts/greptile.mjs --version | tr -d '[:space:]')
+          if [ "$reported" != "$version" ]; then
+            echo "::error::Vendored bundle reports $reported but greptile.version records $version."
+            exit 1
+          fi
+          echo "Bundle reports $reported."
+
+      - name: Bundle is byte-identical to the published npm release
+        run: |
+          set -euo pipefail
+          version=$(cat "$RUNNER_TEMP/version.txt")
+          cd "$RUNNER_TEMP"
+          npm pack "greptile@$version" >/dev/null
+          tar -xzf "greptile-$version.tgz"
+          cd "$GITHUB_WORKSPACE"
+          published=$(shasum -a 256 "$RUNNER_TEMP/package/dist/greptile.js" | cut -d' ' -f1)
+          vendored=$(shasum -a 256 plugins/greptile/scripts/greptile.mjs | cut -d' ' -f1)
+          if [ "$published" != "$vendored" ]; then
+            echo "::error::Vendored bundle does not match npm greptile@$version. published=$published vendored=$vendored. Re-vendor with: npm pack greptile@$version && tar -xzf greptile-$version.tgz && cp package/dist/greptile.js plugins/greptile/scripts/greptile.mjs"
+            exit 1
+          fi
+          echo "Vendored bundle matches npm greptile@$version ($vendored)."
+
+      - name: Commands invoke the vendored bundle, not a fetched one
+        run: |
+          set -euo pipefail
+          if grep -rn 'npx' plugins/greptile/commands/; then
+            echo "::error::A command still fetches the CLI with npx. The plugin vendors it; invoke \${CLAUDE_PLUGIN_ROOT}/scripts/greptile.mjs instead."
+            exit 1
+          fi
+          for f in plugins/greptile/commands/review.md plugins/greptile/commands/login.md; do
+            if ! grep -q 'GREPTILE_NO_UPDATE_CHECK=1' "$f"; then
+              echo "::error::$f does not set GREPTILE_NO_UPDATE_CHECK=1. Without it the CLI reads its own path as a standalone install and tells the user to run an installer that cannot update the plugin's copy."
+              exit 1
+            fi
+          done
+          echo "Commands invoke the vendored bundle with the update check disabled."
