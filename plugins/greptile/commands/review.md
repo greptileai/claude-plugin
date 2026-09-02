@@ -9,8 +9,12 @@ Run a Greptile review on the current branch, against its base branch.
 Build the command from `$ARGUMENTS`, if the user supplied any:
 
 - A branch name they want to review against becomes `--branch <BRANCH>`.
-- Anything else they wrote is what they want the reviewer to focus on, and is
-  passed verbatim as `--instructions "<their words>"`.
+- Anything else they wrote is what they want the reviewer to focus on. Pass it
+  as `--instructions '<their words>'` using **single** quotes, so the reviewer
+  receives their exact text. If their text contains a `'`, replace each one
+  with `'\''` and change nothing else. Never use double quotes: `$` and
+  backticks are live inside them, so `$PATH` would silently disappear from the
+  instructions and `$(...)` would stop the run at a permission prompt.
 
 ```
 npx -y greptile@latest review --agent
