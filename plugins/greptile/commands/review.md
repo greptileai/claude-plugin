@@ -1,25 +1,30 @@
 ---
-allowed-tools: Bash(npx:*)
+allowed-tools: Bash(npx:*), mcp__plugin_greptile_greptile__get_code_review, mcp__plugin_greptile_greptile__list_code_reviews
+argument-hint: [base branch] [what to focus on]
 description: Review the current branch with Greptile
-disable-model-invocation: false
 ---
 
 Run a Greptile review on the current branch, against its base branch.
 
-Run this command, streaming its output:
+Build the command from `$ARGUMENTS`, if the user supplied any:
+
+- A branch name they want to review against becomes `--branch <BRANCH>`.
+- Anything else they wrote is what they want the reviewer to focus on, and is
+  passed verbatim as `--instructions "<their words>"`.
 
 ```
 npx -y greptile@latest review --agent
 ```
 
-Notes:
+Always pass `--agent`; it selects plain output intended for AI agents.
 
-- `--agent` selects plain output intended for AI agents. Always pass it.
-- If the user named a base branch, add `--branch <BRANCH>`.
-- If the user described what to focus on, pass it through as
-  `--instructions "<their words>"`.
-- If the run reports that no one is signed in, tell the user to run
-  `/greptile:login` — do not attempt an interactive login yourself.
+Give the Bash call a **600000 ms timeout**. A review commonly runs longer than
+the two-minute default, and the first invocation also has to fetch the CLI.
+
+If the run reports that no one is signed in, it prints `not signed in. Set
+GREPTILE_API_KEY or run 'greptile login --api-key'`. Prefer OAuth over an API
+key: tell the user to run `/greptile:login`, and stop there rather than
+starting a browser sign-in inside this command.
 
 This dispatches a **headless** review: it reviews the working branch and does
 not need an open pull request. The review is stored on the user's Greptile

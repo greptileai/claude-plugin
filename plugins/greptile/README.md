@@ -33,7 +33,7 @@ The two sign-ins are separate: same Greptile account, same OAuth provider, but t
 - `list_code_reviews` - List code reviews, filtered by repository or status
 - `get_code_review` - Full review body, status, summary citations, and review metadata
 - `trigger_code_review` - Start a Greptile review on a pull request (GitHub and GitLab)
-- `search_greptile_comments` - Search Greptile's review comments across all PRs
+- `search_greptile_comments` - Search Greptile's review comments across every review, on pull requests and on headless CLI runs alike
 
 ### Knowledge base
 - `list_knowledge_bases` - Repositories your organization has knowledge base data for
@@ -43,9 +43,9 @@ The two sign-ins are separate: same Greptile account, same OAuth provider, but t
 
 ### Custom context
 - `list_custom_context` - Your organization's coding patterns and rules
-- `get_custom_context` - Details for one pattern, including evidence and linked comments
-- `search_custom_context` - Search patterns by content
-- `create_custom_context` - Create a new coding pattern
+- `get_custom_context` - Details for one entry, including evidence and linked comments
+- `search_custom_context` - Search entries by content
+- `create_custom_context` - Create a new entry, either a custom instruction (the default) or a pattern
 
 ## Example usage
 
