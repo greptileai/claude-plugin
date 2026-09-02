@@ -19,10 +19,12 @@ on:
     branches: [main]
     paths:
       - 'plugins/greptile/scripts/**'
+      - 'plugins/greptile/commands/**'
       - '.github/workflows/cli-check.yml'
   pull_request:
     paths:
       - 'plugins/greptile/scripts/**'
+      - 'plugins/greptile/commands/**'
       - '.github/workflows/cli-check.yml'
   schedule:
     - cron: '41 8 * * *'
@@ -79,13 +81,26 @@ jobs:
       - name: Commands invoke the vendored bundle, not a fetched one
         run: |
           set -euo pipefail
-          if grep -rn 'npx' plugins/greptile/commands/; then
-            echo "::error::A command still fetches the CLI with npx. The plugin vendors it; invoke \${CLAUDE_PLUGIN_ROOT}/scripts/greptile.mjs instead."
-            exit 1
-          fi
+          # Assert against the fenced command block only. Matching whole files
+          # would fail on a prose mention of npx, and — worse — would accept a
+          # command that dropped GREPTILE_NO_UPDATE_CHECK as long as the
+          # paragraph explaining it survived.
           for f in plugins/greptile/commands/review.md plugins/greptile/commands/login.md; do
-            if ! grep -q 'GREPTILE_NO_UPDATE_CHECK=1' "$f"; then
-              echo "::error::$f does not set GREPTILE_NO_UPDATE_CHECK=1. Without it the CLI reads its own path as a standalone install and tells the user to run an installer that cannot update the plugin's copy."
+            block=$(awk '/^```/{fence = !fence; next} fence' "$f")
+            if [ -z "$block" ]; then
+              echo "::error::$f has no fenced command block to validate."
+              exit 1
+            fi
+            if grep -q 'npx' <<<"$block"; then
+              echo "::error::$f still fetches the CLI with npx. The plugin vendors it; invoke \${CLAUDE_PLUGIN_ROOT}/scripts/greptile.mjs instead."
+              exit 1
+            fi
+            if ! grep -qF 'node "${CLAUDE_PLUGIN_ROOT}/scripts/greptile.mjs"' <<<"$block"; then
+              echo "::error::$f does not invoke the vendored bundle at \${CLAUDE_PLUGIN_ROOT}/scripts/greptile.mjs."
+              exit 1
+            fi
+            if ! grep -qF 'GREPTILE_NO_UPDATE_CHECK=1 node "${CLAUDE_PLUGIN_ROOT}/scripts/greptile.mjs"' <<<"$block"; then
+              echo "::error::$f invokes the vendored bundle without GREPTILE_NO_UPDATE_CHECK=1. Without it the CLI reads its own path as a standalone install and tells the user to run an installer that cannot update the plugin's copy."
               exit 1
             fi
           done
