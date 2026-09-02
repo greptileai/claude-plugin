@@ -9,4 +9,11 @@ This repository is a Claude Code plugin marketplace. Add it directly:
 /plugin install greptile@claude-plugin
 ```
 
-See [`plugins/greptile`](./plugins/greptile) for what the plugin provides.
+The plugin gives Claude Code two ways to work with Greptile:
+
+- the **Greptile MCP server**, for reading and resolving review results and for searching your knowledge base and coding patterns
+- the **Greptile CLI**, for reviewing your working branch before a pull request exists
+
+Both authenticate over OAuth against your Greptile account. There is no API key to create and nothing to install.
+
+See [`plugins/greptile`](./plugins/greptile) for setup, commands, and the full tool list.

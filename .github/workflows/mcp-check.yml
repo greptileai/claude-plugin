@@ -1,0 +1,90 @@
+name: MCP Check
+
+# Behavioural check on the MCP server this plugin points at.
+#
+# The plugin's .mcp.json is a copy of an install definition that lives
+# server-side. It has drifted before: the config carried a hardcoded
+# `Authorization: Bearer ${GREPTILE_API_KEY}` header, which both sent an
+# unexpanded literal on the wire AND disabled Claude Code's OAuth fallback
+# (setting headers.Authorization suppresses it), so the plugin could never
+# authenticate. Diffing text would not have caught that. Connecting does.
+#
+# No secrets: both `tools/list` and the 401 challenge on `tools/call` are
+# reachable unauthenticated.
+
+on:
+  pull_request:
+    paths:
+      - 'plugins/**'
+      - '.github/workflows/mcp-check.yml'
+  schedule:
+    - cron: '17 8 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Config declares no Authorization header
+        run: |
+          set -euo pipefail
+          config=plugins/greptile/.mcp.json
+          if jq -e '.greptile | has("headers")' "$config" >/dev/null; then
+            echo "::error::$config declares headers. An Authorization header disables Claude Code's OAuth fallback; the server authenticates over OAuth and needs none."
+            exit 1
+          fi
+          echo "No headers declared."
+
+      - name: Server still advertises OAuth
+        run: |
+          set -euo pipefail
+          url=$(jq -r '.greptile.url' plugins/greptile/.mcp.json)
+          headers=$(curl -sS -o /dev/null -D - -X POST "$url" \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json, text/event-stream' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_code_reviews","arguments":{}}}' \
+            -w '%{http_code}\n')
+          echo "$headers"
+          if ! grep -qi '^www-authenticate:.*resource_metadata=' <<<"$headers"; then
+            echo "::error::$url did not return an RFC 9728 www-authenticate challenge on an unauthenticated tools/call. Claude Code needs it to start the OAuth flow."
+            exit 1
+          fi
+          echo "OAuth challenge present."
+
+      - name: README documents exactly the tools the server serves
+        run: |
+          set -euo pipefail
+          url=$(jq -r '.greptile.url' plugins/greptile/.mcp.json)
+          curl -sS -X POST "$url" \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json, text/event-stream' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' > /tmp/tools.json
+          python3 - <<'PY'
+          import json, re, sys
+
+          with open('/tmp/tools.json') as fh:
+              payload = json.load(fh)
+          served = {t['name'] for t in payload['result']['tools']}
+          if not served:
+              sys.exit('::error::tools/list returned no tools.')
+
+          readme = open('plugins/greptile/README.md').read()
+          documented = set(re.findall(r'^- `([a-z_]+)`', readme, re.M))
+          documented |= set(re.findall(r'/ `([a-z_]+)`', readme))
+
+          missing = sorted(served - documented)
+          extra = sorted(documented - served)
+          if missing:
+              print(f"::error::README does not document: {', '.join(missing)}")
+          if extra:
+              print(f"::error::README documents tools the server does not serve: {', '.join(extra)}")
+          if missing or extra:
+              sys.exit(1)
+          print(f"README documents all {len(served)} served tools.")
+          PY
