@@ -13,7 +13,7 @@ Nothing to install and no API key to create.
 
 **MCP server.** Open the `/mcp` menu and authenticate **greptile**. Your browser opens [auth.greptile.com](https://auth.greptile.com); sign in and approve access. Claude Code stores and refreshes the tokens.
 
-**CLI.** Run `/greptile:login` once and sign in through the same OAuth provider. The CLI ships with this plugin — there is nothing to fetch and no npm or Homebrew install — but it is a Node program, so Node must be on your machine.
+**CLI.** Run `/greptile:login` once and sign in through the same OAuth provider. The CLI ships with this plugin, so there is no npm or Homebrew install to do — but it is a Node program, so Node must be on your machine.
 
 The two sign-ins are separate: same Greptile account, same OAuth provider, but the CLI keeps its own credentials in `~/.greptile/auth.json` while Claude Code keeps the MCP tokens in its own store. Use whichever surface you need; you only have to sign in to that one.
 
@@ -71,6 +71,29 @@ Because the CLI ships with the plugin, it updates with the plugin — not throug
 `greptile update`, `npm`, or `brew`. Any separate `greptile` you have installed is
 untouched and unused by these commands, though both share your login at
 `~/.greptile/auth.json`.
+
+## Network access
+
+This plugin registers no hooks and sends no telemetry or analytics. Everything
+it contacts, it contacts because you asked it to:
+
+- `api.greptile.com` — the MCP server, and the CLI's API.
+- `auth.greptile.com` — OAuth sign-in, for both surfaces.
+- `app.greptile.com` — link targets printed in review output.
+- `127.0.0.1` — a loopback listener the CLI opens to receive the OAuth
+  callback during `/greptile:login`, closed as soon as the redirect arrives.
+
+There is one exception, and it is the only thing either surface downloads.
+When a review summary contains a Mermaid diagram, the CLI renders it with
+`mmdr`, a small standalone binary fetched on first use from
+[github.com/1jehuang/mermaid-rs-renderer](https://github.com/1jehuang/mermaid-rs-renderer)
+into `~/.cache/greptile/bin/`. The archive is checked against a SHA-256 pinned
+per platform inside the bundle and is deleted rather than run if the hash does
+not match; the download announces itself on stderr, and failing to get it
+degrades the diagram to a link instead of failing the review. Setting
+`GREPTILE_NO_AUTO_INSTALL=1` skips it. **`/greptile:review` already sets that
+variable**, so the plugin does not download it — the code path is reachable
+only if you invoke the bundled CLI yourself without it.
 
 ## Documentation
 

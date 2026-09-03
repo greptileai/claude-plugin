@@ -17,10 +17,19 @@ Build the command from `$ARGUMENTS`, if the user supplied any:
   instructions and `$(...)` would stop the run at a permission prompt.
 
 ```
-GREPTILE_NO_UPDATE_CHECK=1 node "${CLAUDE_PLUGIN_ROOT}/scripts/greptile.mjs" review --agent
+GREPTILE_NO_AUTO_INSTALL=1 GREPTILE_NO_UPDATE_CHECK=1 node "${CLAUDE_PLUGIN_ROOT}/scripts/greptile.mjs" review --agent
 ```
 
 Always pass `--agent`; it selects plain output intended for AI agents.
+
+`GREPTILE_NO_AUTO_INSTALL=1` suppresses the Mermaid renderer download. When a
+review summary carries a diagram, the CLI otherwise fetches a small binary
+(`mmdr`) into `~/.cache/greptile/bin/` to rasterize it. That is worth doing in
+a terminal a person is watching; it is not worth doing here. Claude Code runs
+this command without a TTY, so the inline-image path is dead either way and the
+diagram degrades to a link to an SVG file — while the download itself would
+still stall a review the user is waiting on. The diagram's Mermaid source
+reaches you in the review text regardless.
 
 `GREPTILE_NO_UPDATE_CHECK=1` is belt-and-braces. The CLI infers how it was
 installed from its own path, and versions before the plugin was recognised read
