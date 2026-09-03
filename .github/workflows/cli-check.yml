@@ -100,7 +100,7 @@ jobs:
               exit 1
             fi
             if ! grep -qF 'GREPTILE_NO_UPDATE_CHECK=1 node "${CLAUDE_PLUGIN_ROOT}/scripts/greptile.mjs"' <<<"$block"; then
-              echo "::error::$f invokes the vendored bundle without GREPTILE_NO_UPDATE_CHECK=1. Without it the CLI reads its own path as a standalone install and tells the user to run an installer that cannot update the plugin's copy."
+              echo "::error::$f invokes the vendored bundle without GREPTILE_NO_UPDATE_CHECK=1. CLI versions that predate plugin-install detection read this path as a standalone install and name an installer that cannot update the plugin's copy. --agent already suppresses the notice, so this is a second line of defence for invocations that drop it."
               exit 1
             fi
           done

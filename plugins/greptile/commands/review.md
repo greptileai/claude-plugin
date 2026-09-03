@@ -22,10 +22,13 @@ GREPTILE_NO_UPDATE_CHECK=1 node "${CLAUDE_PLUGIN_ROOT}/scripts/greptile.mjs" rev
 
 Always pass `--agent`; it selects plain output intended for AI agents.
 
-`GREPTILE_NO_UPDATE_CHECK=1` is required, not cosmetic. The CLI infers how it was
-installed from its own path; a copy running from inside this plugin looks like a
-standalone install, so the notifier would tell the user to re-run an installer
-that cannot update the plugin's copy. Updates arrive with the plugin instead.
+`GREPTILE_NO_UPDATE_CHECK=1` is belt-and-braces. The CLI infers how it was
+installed from its own path, and versions before the plugin was recognised read
+a copy running from inside this plugin as a standalone install — which would
+name an installer that cannot update the plugin's copy. The notice is already
+suppressed here because `--agent` is non-interactive, so this only matters if
+the command is ever run without it, or the invocation is copied elsewhere.
+Updates arrive with the plugin either way.
 
 Give the Bash call a **600000 ms timeout**. A review commonly runs longer than
 the two-minute default.
