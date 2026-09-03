@@ -47,6 +47,11 @@ The two sign-ins are separate: same Greptile account, same OAuth provider, but t
 - `search_custom_context` - Search entries by content
 - `create_custom_context` - Create a new entry, either a custom instruction (the default) or a pattern
 
+### Analytics
+- `get_analytics_overview` - Summary metrics and period changes, chart series, and repository, contributor, and pull request rankings
+- `list_analytics_findings` - Findings with severity and security totals and trends, filterable by team, repository, author, severity, or status
+- `list_analytics_filter_options` - The teams, repositories, and authors available to you as analytics filters
+
 ## Example usage
 
 - "Review my current branch with Greptile and fix what it finds"
