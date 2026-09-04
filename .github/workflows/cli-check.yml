@@ -105,3 +105,19 @@ jobs:
             fi
           done
           echo "Commands invoke the vendored bundle with the update check disabled."
+
+      - name: Review command suppresses the renderer download
+        run: |
+          set -euo pipefail
+          # The CLI fetches the mmdr binary from a third-party GitHub release
+          # the first time it renders a Mermaid diagram. That is fine in a
+          # terminal; inside Claude Code there is no TTY to show the image on,
+          # so it would stall a review to produce a link. README.md documents
+          # the download and states that this command suppresses it — keep the
+          # two in step.
+          block=$(awk '/^```/{fence = !fence; next} fence' plugins/greptile/commands/review.md)
+          if ! grep -qF 'GREPTILE_NO_AUTO_INSTALL=1 GREPTILE_NO_UPDATE_CHECK=1 node "${CLAUDE_PLUGIN_ROOT}/scripts/greptile.mjs"' <<<"$block"; then
+            echo "::error::plugins/greptile/commands/review.md must invoke the bundle with GREPTILE_NO_AUTO_INSTALL=1 ahead of GREPTILE_NO_UPDATE_CHECK=1. README.md tells users the plugin never downloads the mmdr renderer; this is what makes that true."
+            exit 1
+          fi
+          echo "Review command suppresses the renderer download."

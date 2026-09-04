@@ -13,7 +13,7 @@ Nothing to install and no API key to create.
 
 **MCP server.** Open the `/mcp` menu and authenticate **greptile**. Your browser opens [auth.greptile.com](https://auth.greptile.com); sign in and approve access. Claude Code stores and refreshes the tokens.
 
-**CLI.** Run `/greptile:login` once and sign in through the same OAuth provider. The CLI ships with this plugin — there is nothing to fetch and no npm or Homebrew install — but it is a Node program, so Node must be on your machine.
+**CLI.** Run `/greptile:login` once and sign in through the same OAuth provider. The CLI ships with this plugin, so there is no npm or Homebrew install to do — but it is a Node program, so Node must be on your machine.
 
 The two sign-ins are separate: same Greptile account, same OAuth provider, but the CLI keeps its own credentials in `~/.greptile/auth.json` while Claude Code keeps the MCP tokens in its own store. Use whichever surface you need; you only have to sign in to that one.
 
@@ -71,6 +71,59 @@ Because the CLI ships with the plugin, it updates with the plugin — not throug
 `greptile update`, `npm`, or `brew`. Any separate `greptile` you have installed is
 untouched and unused by these commands, though both share your login at
 `~/.greptile/auth.json`.
+
+## Network access
+
+This plugin registers no hooks. What it contacts:
+
+- `api.greptile.com` — the MCP server, the CLI's API, and CLI telemetry
+  (below).
+- `auth.greptile.com` — OAuth sign-in, for both surfaces.
+- `app.greptile.com` — link targets printed in review output.
+- `127.0.0.1` — a loopback listener the CLI opens to receive the OAuth
+  callback during `/greptile:login`, closed as soon as the redirect arrives.
+
+### Telemetry
+
+The bundled CLI reports anonymous usage events to `/v1/telemetry` on the same
+host as its API. The events are lifecycle signals — `cli_first_run`,
+`cli_login_started`, `cli_login_failed`, `cli_onboarding_started`,
+`cli_skill_installed`, `cli_review_blocked`, `cli_update_completed` — carrying
+your install method, OS, architecture, whether the run was interactive, and
+which agent surface it ran under. Nothing else: no code, no repository or
+branch names, no file paths, no review content. Event-specific fields are
+fixed values such as `method`, `exit_code`, `reason`, and version strings.
+
+Inside Claude Code the CLI is always non-interactive, so it cannot ask you to
+decide and does not try. It falls back to **anonymous mode**: a random
+`cli:<uuid>` stored in `telemetry.json`, no account token attached, and no
+profile built on the other end. If you have separately opted in from a
+standalone `greptile` on the same machine, that decision carries over here and
+events are sent under your account instead.
+
+To turn it off, any one of these is enough:
+
+```sh
+export GREPTILE_TELEMETRY_DISABLED=1   # or DO_NOT_TRACK=1
+greptile settings set telemetry false
+```
+
+`CI=1` also disables it, and a CLI pointed at a self-hosted Greptile sends no
+telemetry at all.
+
+### Downloads
+
+One thing here fetches software, and this is it. When a review summary
+contains a Mermaid diagram, the CLI renders it with
+`mmdr`, a small standalone binary fetched on first use from
+[github.com/1jehuang/mermaid-rs-renderer](https://github.com/1jehuang/mermaid-rs-renderer)
+into `~/.cache/greptile/bin/`. The archive is checked against a SHA-256 pinned
+per platform inside the bundle and is deleted rather than run if the hash does
+not match; the download announces itself on stderr, and failing to get it
+degrades the diagram to a link instead of failing the review. Setting
+`GREPTILE_NO_AUTO_INSTALL=1` skips it. **`/greptile:review` already sets that
+variable**, so the plugin does not download it — the code path is reachable
+only if you invoke the bundled CLI yourself without it.
 
 ## Documentation
 
