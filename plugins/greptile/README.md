@@ -88,11 +88,13 @@ This plugin registers no hooks. What it contacts:
 The bundled CLI reports anonymous usage events to `/v1/telemetry` on the same
 host as its API. The events are lifecycle signals — `cli_first_run`,
 `cli_login_started`, `cli_login_failed`, `cli_onboarding_started`,
-`cli_skill_installed`, `cli_review_blocked`, `cli_update_completed` — carrying
-your install method, OS, architecture, whether the run was interactive, and
-which agent surface it ran under. Nothing else: no code, no repository or
-branch names, no file paths, no review content. Event-specific fields are
-fixed values such as `method`, `exit_code`, `reason`, and version strings.
+`cli_skill_installed`, `cli_skill_updated`, `cli_review_blocked`,
+`cli_update_completed` — carrying your install method, OS, architecture,
+whether the run was interactive, and which agent surface it ran under. Nothing
+else: no code, no repository or branch names, no file paths, no review content.
+Event-specific fields are fixed values: `method`, `exit_code`, `reason`, the
+version strings on an update, and the name of the Greptile-authored skill on
+the two skill events.
 
 Inside Claude Code the CLI is always non-interactive, so it cannot ask you to
 decide and does not try. It falls back to **anonymous mode**: a random
