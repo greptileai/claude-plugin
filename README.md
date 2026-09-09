@@ -6,8 +6,10 @@ This repository is a Claude Code plugin marketplace. Add it directly:
 
 ```
 /plugin marketplace add greptileai/claude-plugin
-/plugin install greptile@claude-plugin
+/plugin install greptile@greptile-claude-plugin
 ```
+
+If you added the marketplace when it was still named `claude-plugin`, it stays registered under that name and an existing install keeps working. To install under the new name, remove the marketplace and add it again first. Removing a marketplace also uninstalls its plugins.
 
 The plugin gives Claude Code two ways to work with Greptile:
 
