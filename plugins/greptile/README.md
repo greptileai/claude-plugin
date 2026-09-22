@@ -24,6 +24,10 @@ The two sign-ins are separate: same Greptile account, same OAuth provider, but t
 
 ## Tools
 
+### Account and repositories
+- `get_me` - Show your authenticated identity and organization memberships
+- `list_repositories` - List repositories accessible to your account
+
 ### Pull requests
 - `list_merge_requests` / `list_pull_requests` - List PRs, filtered by repository, branch, author, or state
 - `get_merge_request` - Detailed PR info, including which review comments have been addressed by later commits
